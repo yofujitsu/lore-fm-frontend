@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { addRelease, emptyBoard, normalizeNickname, parseDraft, removeRelease, swapSlots } from './board'
+import { addRelease, emptyBoard, normalizeNickname, parseDraft, removeRelease, swapSlots, parseSavedBoards, normalizeBoardName } from './board'
 import type { Release } from './release'
 
 const release = (id = 'spotify:123'): Release => ({
@@ -59,3 +59,21 @@ describe('Top 9 draft', () => {
   })
 })
 
+
+describe('Named boards', () => {
+  it('restores snapshots and rejects corrupt, duplicate, unsafe and oversized libraries', () => {
+    const entry = { id: 'saved-1', name: 'Favorites', board: addRelease(emptyBoard(), release()) }
+    const encode = (boards: unknown[], version = 1) => JSON.stringify({ version, boards })
+    expect(parseSavedBoards(encode([entry]))).toEqual([entry])
+    for (const raw of ['broken', encode([entry], 2), encode([{ ...entry, name: ' ' }]),
+      encode([{ ...entry, name: 'x'.repeat(41) }]), encode([entry, { ...entry, name: 'Other' }]),
+      encode([entry, { ...entry, id: 'saved-2', name: 'FAVORITES' }]),
+      encode([{ ...entry, board: { ...entry.board, releases: [] } }]),
+      encode([{ ...entry, board: { ...entry.board, releases: [{ ...release(), artwork: { url: 'javascript:alert(1)' } }, ...Array(8).fill(null)] } }]),
+      encode(Array.from({ length: 21 }, (_, i) => ({ ...entry, id: 'id-' + i, name: 'Board ' + i }))), ' '.repeat(2000001)]) {
+      expect(() => parseSavedBoards(raw)).toThrow()
+    }
+    expect(normalizeBoardName('  abc\u0000  ')).toBe('abc')
+    expect(normalizeBoardName('🎵'.repeat(41))).toBe('🎵'.repeat(40))
+  })
+})

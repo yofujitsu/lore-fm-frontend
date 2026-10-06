@@ -1,0 +1,11 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>Ninefold PNG verification</title><style>body{background:#252a21;color:#eeeede;font:16px sans-serif;margin:24px}button{padding:12px 20px}img{display:block;width:min(100%,720px);height:auto;margin-top:20px}</style><button id="generate">Generate PNG preview</button><p id="status">Actual app export, nine populated slots.</p><script type="module">
+import { exportPng } from '/src/png.ts'
+document.querySelector('#generate').onclick=async()=>{
+try {
+const response=await fetch('/api/v1/releases/search?q=Daft%20Punk%20Discovery');const data=await response.json();
+const releases=Array.from({length:9},(_,i)=>({...data.results[i%data.results.length],id:'preview:'+i}));
+const {blob,missingCovers}=await exportPng({version:1,nickname:'My favorite records',theme:'dark',releases});
+const image=document.createElement('img');image.alt='Ninefold PNG with release titles and artists beneath every cover';image.src=URL.createObjectURL(blob);document.body.append(image);
+document.querySelector('#status').textContent='PNG ready: '+blob.size+' bytes; '+missingCovers+' missing covers.';
+}catch(error){document.querySelector('#status').textContent=error.message}
+};</script></html>

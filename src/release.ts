@@ -9,4 +9,4 @@ export interface Release {
   artwork: { url: string; width: number | null; height: number | null; provider: Provider } | null
   sources: { provider: Provider; externalId: string; externalUrl: string | null }[]
 }
-export interface SearchResponse { query: string; results: Release[] }
+export interface SearchResponse { query: string; results: Release[]; partial?: boolean; unavailable?: boolean }

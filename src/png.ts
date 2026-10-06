@@ -24,7 +24,7 @@ export async function exportPng(board: TopBoard): Promise<{ blob: Blob; missingC
   if (!board.releases.some(Boolean)) throw new Error('Add at least one release before exporting.')
   const canvas = document.createElement('canvas')
   canvas.width = 1440
-  canvas.height = 1740
+  canvas.height = 1980
   const ctx = canvas.getContext('2d')
   if (!ctx) throw new Error('PNG export is unavailable in this browser.')
   const palette = board.theme === 'light'
@@ -49,10 +49,21 @@ export async function exportPng(board: TopBoard): Promise<{ blob: Blob; missingC
     ctx.fillStyle = palette.muted
     ctx.fillText(board.nickname, 72, 203)
   }
+  function fitCaption(text: string) {
+    if (ctx!.measureText(text).width <= 420) return text
+    const characters = Array.from(new Intl.Segmenter().segment(text), part => part.segment)
+    let low = 0, high = characters.length
+    while (low < high) {
+      const middle = Math.ceil((low + high) / 2)
+      if (ctx!.measureText(characters.slice(0, middle).join('') + '…').width <= 420) low = middle
+      else high = middle - 1
+    }
+    return characters.slice(0, low).join('') + '…'
+  }
   let missingCovers = 0
   for (let index = 0; index < 9; index++) {
     const x = 72 + (index % 3) * 438
-    const y = 240 + Math.floor(index / 3) * 438
+    const y = 240 + Math.floor(index / 3) * 518
     const image = covers[index]
     ctx.fillStyle = palette.surface
     ctx.fillRect(x, y, 420, 420)
@@ -74,13 +85,22 @@ export async function exportPng(board: TopBoard): Promise<{ blob: Blob; missingC
       ctx.fillText(board.releases[index] ? 'NO ARTWORK' : 'AN OPEN SLOT', x + 210, y + 295)
       ctx.textAlign = 'left'
     }
+    const release = board.releases[index]
+    if (release) {
+      ctx.fillStyle = palette.text
+      ctx.font = '600 28px sans-serif'
+      ctx.fillText(fitCaption(release.title), x, y + 456)
+      ctx.fillStyle = palette.muted
+      ctx.font = '400 22px sans-serif'
+      ctx.fillText(fitCaption(release.artists.map(artist => artist.name).join(', ') || 'Unknown artist'), x, y + 488)
+    }
   }
   ctx.fillStyle = palette.muted
   ctx.font = '400 24px sans-serif'
-  ctx.fillText('A little record of you.', 72, 1638)
+  ctx.fillText('A little record of you.', 72, 1878)
   ctx.textAlign = 'right'
   ctx.font = '600 20px sans-serif'
-  ctx.fillText('MADE FOR MUSIC PEOPLE.', 1368, 1638)
+  ctx.fillText('MADE FOR MUSIC PEOPLE.', 1368, 1878)
   const blob = await new Promise<Blob>((resolve, reject) => {
     canvas.toBlob(value => value ? resolve(value) : reject(new Error('PNG export failed. Please try again.')), 'image/png')
   })

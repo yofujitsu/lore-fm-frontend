@@ -4,6 +4,7 @@ import { normalizeNickname, removeRelease } from './board'
 import type { TopBoard } from './board'
 import { Artwork } from './Artwork'
 import ShareActions from './ShareActions'
+import SavedBoards from './SavedBoards'
 
 interface Props {
   board: TopBoard
@@ -14,9 +15,18 @@ interface Props {
   warning: string | null
   saved: boolean
   announcement: string
+  canUndo: boolean
+  onUndo: () => void
+  onClear: () => void
+  onLoad: (board: TopBoard) => void
 }
 
-export default function BoardEditor({ board, selected, onSelect, onChange, onSwap, warning, saved, announcement }: Props) {
+export default function BoardEditor({ board, selected, onSelect, onChange, onSwap, warning, saved, announcement, canUndo, onUndo, onClear, onLoad }: Props) {
+  const [confirmClear, setConfirmClear] = useState(false)
+  const clearButton = useRef<HTMLButtonElement | null>(null)
+  const undoButton = useRef<HTMLButtonElement | null>(null)
+  const slots = useRef<(HTMLButtonElement | null)[]>([])
+  const restoreFocus = useRef(false)
   const [moveSource, setMoveSource] = useState<number | null>(null)
   const [dragging, setDragging] = useState<number | null>(null)
   const [dropTarget, setDropTarget] = useState<number | null>(null)
@@ -30,7 +40,19 @@ export default function BoardEditor({ board, selected, onSelect, onChange, onSwa
       handles.current[focusTarget.current]?.focus()
       focusTarget.current = null
     }
-  }, [board.releases])
+    if (restoreFocus.current) {
+      if (canUndo) undoButton.current?.focus()
+      else slots.current[board.releases.findIndex(Boolean) < 0 ? 0 : board.releases.findIndex(Boolean)]?.focus()
+      restoreFocus.current = false
+    }
+  }, [board, canUndo])
+
+  useEffect(() => {
+    if (count === 0 && confirmClear) {
+      setConfirmClear(false)
+      undoButton.current?.focus()
+    }
+  }, [count, confirmClear])
 
   function move(from: number, to: number) {
     if (to < 0 || to > 8 || from === to) return
@@ -79,6 +101,7 @@ export default function BoardEditor({ board, selected, onSelect, onChange, onSwa
   return <section className="board-section" aria-labelledby="board-title">
     <div className="section-heading"><h2 id="board-title">Your Top 9</h2><span className="board-count">{count} / 9</span></div>
     <p className="board-intro">A little record of you. Pick the releases that matter.</p>
+    <SavedBoards board={board} onLoad={next => { setMoveSource(null); setConfirmClear(false); onLoad(next) }} />
     <div className="board-settings">
       <div className="nickname-field">
         <label className="search-label" htmlFor="nickname">Nickname (optional)</label>
@@ -91,10 +114,27 @@ export default function BoardEditor({ board, selected, onSelect, onChange, onSwa
           aria-pressed={board.theme === theme} onClick={() => onChange({ ...board, theme })}>{theme === 'dark' ? '☾' : '☀'} <span>{theme === 'dark' ? 'Dark' : 'Light'}</span></button>)}
       </div>
     </div>
+    <div className="board-tools" role="group" aria-label="Board actions">
+      <button className="secondary-button" type="button" aria-label="Undo last change" disabled={!canUndo} ref={undoButton}
+        onClick={() => { setMoveSource(null); setConfirmClear(false); restoreFocus.current = true; onUndo() }}><span aria-hidden="true">↶</span> Undo</button>
+      <button className="secondary-button" type="button" disabled={count === 0} ref={clearButton}
+        onClick={() => setConfirmClear(true)}>Clear board</button>
+    </div>
+    {confirmClear && <div className="clear-confirmation" role="group" aria-labelledby="clear-board-question">
+      <p id="clear-board-question">Clear board confirmation</p>
+      <p>Clear all nine slots? Your nickname and theme will stay the same.</p>
+      <div className="board-tools">
+        <button className="secondary-button" type="button" autoFocus aria-label="Cancel clear"
+          onClick={() => { setConfirmClear(false); clearButton.current?.focus() }}>Cancel</button>
+        <button className="secondary-button" type="button" onClick={() => {
+          setConfirmClear(false); setMoveSource(null); restoreFocus.current = true; onClear()
+        }}>Clear slots</button>
+      </div>
+    </div>}
     <ol className="top-grid" aria-label="Nine release slots">
       {board.releases.map((release, index) => <li key={index} data-board-slot={index}
         className={'board-slot' + (selected === index ? ' is-selected' : '') + (dragging === index ? ' is-dragging' : '') + (dragging !== null && dropTarget === index ? ' is-drop-target' : '')}>
-        <button type="button" className="slot-select" aria-label={'Select slot ' + (index + 1) + ': ' + (release?.title ?? 'Empty')}
+        <button type="button" className="slot-select" ref={node => { slots.current[index] = node }} aria-label={'Select slot ' + (index + 1) + ': ' + (release?.title ?? 'Empty')}
           aria-pressed={selected === index} onClick={() => {
             if (moveSource !== null) { move(moveSource, index); setMoveSource(null) }
             else onSelect(selected === index ? null : index)

@@ -1,7 +1,7 @@
 import { act, fireEvent, render, screen, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import App from './App'
-import { addRelease, DRAFT_KEY, emptyBoard, parseDraft } from './board'
+import { addRelease, DRAFT_KEY, emptyBoard, parseDraft, SAVED_BOARDS_KEY } from './board'
 import type { Release } from './release'
 
 const release = (id = 'spotify:123', title = 'Cold Visions'): Release => ({
@@ -27,6 +27,39 @@ describe('board editor', () => {
   })
   afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks(); vi.unstubAllGlobals(); document.elementFromPoint = realElementFromPoint; localStorage.clear() })
 
+  it('keeps the last content change when a loaded snapshot only changes the theme', () => {
+    const original = addRelease(emptyBoard(), release())
+    const snapshot = { ...original, nickname: 'Updated', theme: 'light' as const }
+    localStorage.setItem(DRAFT_KEY, JSON.stringify(original))
+    localStorage.setItem(SAVED_BOARDS_KEY, JSON.stringify({ version: 1, boards: [{ id: 'snapshot', name: 'Same releases', board: snapshot }] }))
+    render(<App />)
+    fireEvent.change(screen.getByRole('textbox', { name: 'Nickname (optional)' }), { target: { value: 'Updated' } })
+    fireEvent.click(screen.getByText('Saved boards'))
+    fireEvent.change(screen.getByLabelText('Saved board'), { target: { value: 'snapshot' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Load board' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Undo last change' }))
+    expect(screen.getByRole('textbox', { name: 'Nickname (optional)' })).toHaveValue('')
+    expect(slot(1, 'Cold Visions')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Light theme' })).toHaveAttribute('aria-pressed', 'true')
+  })
+  it('loads a saved snapshot into the draft and undoes its content while retaining the chosen theme', () => {
+    const original = { ...addRelease(emptyBoard(), release()), nickname: 'Original' }
+    const snapshot = { ...addRelease(emptyBoard(), release('spotify:echo', 'Echo')), nickname: 'Saved', theme: 'light' as const }
+    localStorage.setItem(DRAFT_KEY, JSON.stringify(original))
+    localStorage.setItem(SAVED_BOARDS_KEY, JSON.stringify({ version: 1, boards: [{ id: 'snapshot', name: 'Quiet days', board: snapshot }] }))
+    render(<App />)
+    fireEvent.click(screen.getByText('Saved boards'))
+    fireEvent.change(screen.getByLabelText('Saved board'), { target: { value: 'snapshot' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Load board' }))
+    expect(slot(1, 'Echo')).toBeInTheDocument()
+    expect(screen.getByRole('textbox', { name: 'Nickname (optional)' })).toHaveValue('Saved')
+    expect(screen.getByRole('button', { name: 'Light theme' })).toHaveAttribute('aria-pressed', 'true')
+    fireEvent.click(screen.getByRole('button', { name: 'Undo last change' }))
+    expect(slot(1, 'Cold Visions')).toBeInTheDocument()
+    expect(screen.getByRole('textbox', { name: 'Nickname (optional)' })).toHaveValue('Original')
+    expect(parseDraft(localStorage.getItem(DRAFT_KEY)!)).toEqual({ ...original, theme: 'light' })
+    expect(JSON.parse(localStorage.getItem(SAVED_BOARDS_KEY)!).boards[0].board).toEqual(snapshot)
+  })
   it('adds from search, prevents duplicates and removes from a fixed slot', async () => {
     render(<App />)
     expect(within(board()).getAllByRole('button', { name: /^Select slot/ })).toHaveLength(9)
@@ -98,6 +131,103 @@ describe('board editor', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Add Cold Visions to Top 9' }))
     expect(slot(5, 'Cold Visions')).toBeInTheDocument()
   })
+  it('undoes add, replacement, movement and removal without recording no-op edits', async () => {
+    render(<App />)
+    const undo = () => within(board()).getByRole('button', { name: 'Undo last change' })
+    expect(undo()).toBeDisabled()
+    await search()
+    fireEvent.click(screen.getByRole('button', { name: 'Add Cold Visions to Top 9' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Dark theme' }))
+    fireEvent.click(undo())
+    expect(slot(1)).toBeInTheDocument()
+    expect(parseDraft(localStorage.getItem(DRAFT_KEY)!).releases.every(item => item === null)).toBe(true)
+    expect(undo()).toBeDisabled()
+    fireEvent.click(screen.getByRole('button', { name: 'Add Cold Visions to Top 9' }))
+    fireEvent.click(slot(1, 'Cold Visions'))
+    fireEvent.click(screen.getByRole('button', { name: 'Add Echo to Top 9' }))
+    fireEvent.click(undo())
+    expect(slot(1, 'Cold Visions')).toBeInTheDocument()
+    fireEvent.keyDown(within(board()).getByRole('button', { name: 'Move Cold Visions from slot 1' }), { key: 'ArrowDown' })
+    fireEvent.click(undo())
+    expect(slot(1, 'Cold Visions')).toBeInTheDocument()
+    expect(slot(4)).toBeInTheDocument()
+    fireEvent.click(within(board()).getByRole('button', { name: 'Remove Cold Visions from slot 1' }))
+    fireEvent.click(undo())
+    expect(slot(1, 'Cold Visions')).toBeInTheDocument()
+    expect(parseDraft(localStorage.getItem(DRAFT_KEY)!).releases[0]?.title).toBe('Cold Visions')
+  })
+
+  it('cancels clearing without edits and can undo a confirmed clear while preserving nickname and theme', () => {
+    const original = { ...addRelease(emptyBoard(), release(), 7), nickname: 'listener', theme: 'light' as const }
+    localStorage.setItem(DRAFT_KEY, JSON.stringify(original))
+    render(<App />)
+    fireEvent.click(within(board()).getByRole('button', { name: 'Clear board' }))
+    expect(within(board()).getByRole('group', { name: 'Clear board confirmation' })).toBeInTheDocument()
+    const cancel = within(board()).getByRole('button', { name: 'Cancel clear' })
+    expect(cancel).toHaveFocus()
+    fireEvent.click(cancel)
+    expect(within(board()).getByRole('button', { name: 'Clear board' })).toHaveFocus()
+    expect(slot(8, 'Cold Visions')).toBeInTheDocument()
+    expect(localStorage.getItem(DRAFT_KEY)).toBe(JSON.stringify(original))
+    expect(within(board()).getByRole('button', { name: 'Undo last change' })).toBeDisabled()
+
+    fireEvent.click(within(board()).getByRole('button', { name: 'Clear board' }))
+    fireEvent.click(within(board()).getByRole('button', { name: 'Clear slots' }))
+    expect(within(board()).getByRole('button', { name: 'Undo last change' })).toHaveFocus()
+    expect(within(board()).getByRole('button', { name: 'Clear board' })).toBeDisabled()
+    const cleared = parseDraft(localStorage.getItem(DRAFT_KEY)!)
+    expect(cleared.releases.every(item => item === null)).toBe(true)
+    expect(cleared.nickname).toBe('listener')
+    expect(cleared.theme).toBe('light')
+    fireEvent.click(within(board()).getByRole('button', { name: 'Undo last change' }))
+    expect(slot(8, 'Cold Visions')).toBeInTheDocument()
+    expect(slot(8, 'Cold Visions')).toHaveFocus()
+    expect(parseDraft(localStorage.getItem(DRAFT_KEY)!)).toEqual(original)
+  })
+
+  it('closes a pending clear confirmation when the last release is removed and retains usable Undo', () => {
+    const original = addRelease(emptyBoard(), release())
+    localStorage.setItem(DRAFT_KEY, JSON.stringify(original))
+    render(<App />)
+    fireEvent.click(within(board()).getByRole('button', { name: 'Clear board' }))
+    fireEvent.click(within(board()).getByRole('button', { name: 'Remove Cold Visions from slot 1' }))
+    expect(within(board()).queryByRole('group', { name: 'Clear board confirmation' })).not.toBeInTheDocument()
+    const undo = within(board()).getByRole('button', { name: 'Undo last change' })
+    expect(undo).toBeEnabled()
+    expect(undo).toHaveFocus()
+    fireEvent.click(undo)
+    expect(slot(1, 'Cold Visions')).toHaveFocus()
+    expect(parseDraft(localStorage.getItem(DRAFT_KEY)!)).toEqual(original)
+  })
+
+  it('undoes nicknames without recording themes and starts fresh history after reload', () => {
+    const original = { ...emptyBoard(), nickname: 'listener' }
+    localStorage.setItem(DRAFT_KEY, JSON.stringify(original))
+    const view = render(<App />)
+    const undo = () => within(board()).getByRole('button', { name: 'Undo last change' })
+    fireEvent.change(screen.getByRole('textbox', { name: 'Nickname (optional)' }), { target: { value: 'changed' } })
+    fireEvent.click(undo())
+    expect(screen.getByRole('textbox', { name: 'Nickname (optional)' })).toHaveValue('listener')
+    fireEvent.click(screen.getByRole('button', { name: 'Light theme' }))
+    expect(undo()).toBeDisabled()
+    expect(parseDraft(localStorage.getItem(DRAFT_KEY)!)).toEqual({ ...original, theme: 'light' })
+    view.unmount()
+    render(<App />)
+    expect(undo()).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Light theme' })).toHaveAttribute('aria-pressed', 'true')
+  })
+
+  it('keeps a release edit undoable across theme changes and preserves the current theme', async () => {
+    render(<App />)
+    await search()
+    fireEvent.click(screen.getByRole('button', { name: 'Add Cold Visions to Top 9' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Light theme' }))
+    fireEvent.click(within(board()).getByRole('button', { name: 'Undo last change' }))
+    expect(slot(1)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Light theme' })).toHaveAttribute('aria-pressed', 'true')
+    expect(parseDraft(localStorage.getItem(DRAFT_KEY)!)).toEqual({ ...emptyBoard(), theme: 'light' })
+  })
+
   it('preserves an unreadable saved draft until the user starts editing', () => {
     localStorage.setItem(DRAFT_KEY, '{"version":2}')
     render(<App />)

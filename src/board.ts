@@ -65,3 +65,28 @@ export function loadDraft(): { board: TopBoard; warning: string | null } {
   }
 }
 
+
+export interface SavedBoard { id: string; name: string; board: TopBoard }
+export const SAVED_BOARDS_KEY = 'ninefold.boards.v1'
+export const MAX_SAVED_BOARDS = 20
+export const normalizeBoardName = (name: string) => normalizeNickname(name.trim()).trim()
+export const boardNameKey = (name: string) => name.normalize('NFKC').toLowerCase()
+
+export function parseSavedBoards(raw: string): SavedBoard[] {
+  if (raw.length > 2000000) throw new Error('Saved boards are too large')
+  const value: unknown = JSON.parse(raw)
+  if (!object(value) || value.version !== 1 || !Array.isArray(value.boards) || value.boards.length > MAX_SAVED_BOARDS) throw new Error('Invalid saved boards')
+  const boards = value.boards.map(entry => {
+    if (!object(entry) || !text(entry.id, 100) || !text(entry.name, 80) || entry.name !== normalizeBoardName(entry.name)) throw new Error('Invalid saved board')
+    return { id: entry.id, name: entry.name, board: parseDraft(JSON.stringify(entry.board)) }
+  })
+  if (new Set(boards.map(entry => entry.id)).size !== boards.length || new Set(boards.map(entry => boardNameKey(entry.name))).size !== boards.length) throw new Error('Duplicate saved boards')
+  return boards
+}
+
+export function loadSavedBoards(): { boards: SavedBoard[]; unreadable: boolean } {
+  try {
+    const raw = window.localStorage.getItem(SAVED_BOARDS_KEY)
+    return { boards: raw === null ? [] : parseSavedBoards(raw), unreadable: false }
+  } catch { return { boards: [], unreadable: true } }
+}
