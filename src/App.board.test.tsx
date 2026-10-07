@@ -28,7 +28,7 @@ describe('board editor', () => {
   afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks(); vi.unstubAllGlobals(); document.elementFromPoint = realElementFromPoint; localStorage.clear() })
 
   it('keeps the last content change when a loaded snapshot only changes the theme', () => {
-    const original = addRelease(emptyBoard(), release())
+    const original = { ...addRelease(emptyBoard(), release()), name: 'Same releases' }
     const snapshot = { ...original, nickname: 'Updated', theme: 'light' as const }
     localStorage.setItem(DRAFT_KEY, JSON.stringify(original))
     localStorage.setItem(SAVED_BOARDS_KEY, JSON.stringify({ version: 1, boards: [{ id: 'snapshot', name: 'Same releases', board: snapshot }] }))
@@ -247,3 +247,15 @@ describe('board editor', () => {
   })
 })
 
+
+it('persists and undoes board names while preserving the current theme', () => {
+  localStorage.setItem(DRAFT_KEY, JSON.stringify(addRelease(emptyBoard(), release())))
+  render(<App />)
+  fireEvent.change(screen.getByLabelText('Board name (optional)'), { target: { value: 'my goth era' } })
+  expect(parseDraft(localStorage.getItem(DRAFT_KEY)!)).toMatchObject({ name: 'my goth era' })
+  fireEvent.click(screen.getByRole('button', { name: 'Light theme' }))
+  fireEvent.click(screen.getByRole('button', { name: 'Undo last change' }))
+  expect(screen.getByLabelText('Board name (optional)')).toHaveValue('')
+  expect(screen.getByRole('button', { name: 'Light theme' })).toHaveAttribute('aria-pressed', 'true')
+  localStorage.clear()
+})

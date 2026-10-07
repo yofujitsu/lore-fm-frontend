@@ -4,8 +4,10 @@ import { safeHttpsUrl, searchReleases, trimSearchQuery } from './search'
 import { addRelease, DRAFT_KEY, loadDraft, swapSlots } from './board'
 import type { TopBoard } from './board'
 import BoardEditor from './BoardEditor'
-import { Artwork, GridMark } from './Artwork'
+import { Artwork } from './Artwork'
+import { SiteHeader, SiteFooter, SpotifyIcon } from './SiteChrome'
 import SharedBoardPage from './SharedBoardPage'
+import AnimatedHeading from './AnimatedHeading'
 
 const typeLabels: Record<ReleaseType, string> = {
   ALBUM: 'Album', EP: 'EP', MIXTAPE: 'Mixtape', SINGLE: 'Single',
@@ -17,23 +19,21 @@ function SearchIcon() {
   return <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5" /><path d="m16 16 4.5 4.5" /></svg>
 }
 
-function ReleaseCard({ release, index, added, full, onAdd }: { release: Release; index: number; added: boolean; full: boolean; onAdd: () => void }) {
+function ReleaseCard({ release, added, full, onAdd }: { release: Release; added: boolean; full: boolean; onAdd: () => void }) {
   return <article className="release-card">
     <Artwork url={release.artwork?.url} title={release.title} />
-    <div className="release-number">{String(index + 1).padStart(2, '0')} <span>{typeLabels[release.type] ?? 'Release'}{release.releaseYear ? ' · ' + release.releaseYear : ''}</span></div>
-    <h3>{release.title}</h3>
-    <p className="artist">{release.artists.map(artist => artist.name).join(', ')}</p>
-    <div className="release-actions">
+    <div className="release-info">
+      <h3>{release.title}</h3><p className="artist">{release.artists.map(artist => artist.name).join(', ')}</p>
+      <p className="release-meta">{typeLabels[release.type] ?? 'Release'}{release.releaseYear ? ' · ' + release.releaseYear : ''}</p>
       <div className="source-links">{release.sources.map(source => {
         const href = safeHttpsUrl(source.externalUrl)
         return href && <a key={source.provider + ':' + source.externalId} className="source-link" href={href} target="_blank" rel="noopener noreferrer" aria-label={'Open ' + release.title + ' on ' + providerLabels[source.provider]}>
-        {source.provider === 'SPOTIFY' && <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="12" fill="currentColor" /><g fill="none" stroke="#111410" strokeLinecap="round"><path strokeWidth="2" d="M5 9c5-2 9-1 14 1" /><path strokeWidth="1.7" d="M6 12c4-1.5 8-1 12 1" /><path strokeWidth="1.5" d="M7 15c3-1 6-.5 10 1" /></g></svg>}
-        {providerLabels[source.provider]} <span aria-hidden="true">↗</span>
-      </a>
+          {source.provider === 'SPOTIFY' && <SpotifyIcon />}{providerLabels[source.provider]} <span aria-hidden="true">↗</span>
+        </a>
       })}</div>
-      <button className="add-button" type="button" disabled={added || full} onClick={onAdd}
-        aria-label={added ? release.title + ' is already in your Top 9' : 'Add ' + release.title + ' to Top 9'}>{added ? '✓ Added' : '+ Add'}</button>
     </div>
+    <button className="add-button" type="button" disabled={added || full} onClick={onAdd}
+      aria-label={added ? release.title + ' is already in your Top 9' : 'Add ' + release.title + ' to Top 9'}>{added ? '✓' : '+ Add'}</button>
   </article>
 }
 
@@ -64,7 +64,7 @@ function EditorApp() {
     && (!filterYear || release.releaseYear === Number(filterYear))) : []
 
   function updateBoard(next: TopBoard) {
-    const contentChanged = next.nickname !== board.nickname || next.releases.some((release, index) =>
+    const contentChanged = next.nickname !== board.nickname || next.name !== board.name || next.releases.some((release, index) =>
       release !== board.releases[index] && JSON.stringify(release) !== JSON.stringify(board.releases[index]))
     if (!contentChanged && next.theme === board.theme) return
     if (contentChanged) setPrevious(board)
@@ -104,7 +104,7 @@ function EditorApp() {
 
   useEffect(() => {
     document.documentElement.dataset.theme = board.theme
-    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', board.theme === 'dark' ? '#111410' : '#f5f5eb')
+    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', board.theme === 'dark' ? '#171823' : '#f1f1fa')
   }, [board.theme])
 
   useEffect(() => {
@@ -141,40 +141,27 @@ function EditorApp() {
   }, [input])
 
   return <div className="page">
-    <header className="site-header">
-      <a className="brand" href="/" aria-label="Ninefold home"><GridMark />ninefold<span className="brand-dot">®</span></a>
-      <span className="header-note">A LITTLE RECORD OF YOU.</span>
-    </header>
+    <SiteHeader />
     <main>
       <section className="hero" aria-labelledby="hero-title">
-        <div className="hero-copy">
-          <p className="eyebrow"><span />YOUR MUSIC. YOUR STORY.</p>
-          <h1 id="hero-title">Nine releases.<br /><em>One taste.</em></h1>
-        </div>
-        <p className="intro">The records that stay with you.<br />Find them. Arrange them. Make it yours.</p>
+        <AnimatedHeading />
+        <p className="intro">Albums, EPs, singles. Make a board for a mood, a genre or an era. Pass it around.</p>
       </section>
       <div className="workspace">
-        <BoardEditor board={board} selected={selected} onSelect={setSelected} onChange={updateBoard} onSwap={moveRelease}
-          warning={saveError ? 'Your draft could not be saved. Keep this tab open to avoid losing your changes.' : draft.warning}
-          saved={saved} announcement={announcement} canUndo={previous !== null} onUndo={undoBoard} onClear={clearBoard} onLoad={next => {
-            updateBoard(next)
-            setSelected(null)
-            setAnnouncement('Saved board loaded.')
-          }} />
         <section className="search-section" aria-labelledby="search-title">
-          <div className="section-heading"><h2 id="search-title"><span aria-hidden="true">01</span> Find your release</h2><span className="section-note">START WITH WHAT YOU LOVE</span></div>
+          <div className="section-heading"><h2 id="search-title">Find a release</h2></div>
           <label className="search-label" htmlFor="release-query">Release title or artist</label>
           <div className="search-field">
             <SearchIcon />
             <input id="release-query" type="search" value={input} onChange={event => setInput(event.target.value)} placeholder="Try Cold Visions or Björk"
               autoComplete="off" spellCheck={false} maxLength={400} aria-describedby="search-hint" />
           </div>
-          <p id="search-hint" className="search-hint">Type at least 2 characters to start searching.</p>
+          <p id="search-hint" className="sr-only">Type at least 2 characters to search.</p>
           <div className="search-filters" role="group" aria-label="Filter these search results">
             <div className="filter-field"><label className="search-label" htmlFor="release-type">Release type</label>
               <select id="release-type" value={filterType} onChange={event => setFilterType(event.target.value as ReleaseType | '')}>
                 <option value="">All types</option>
-                {Object.entries(typeLabels).map(([type, label]) => <option key={type} value={type}>{label}</option>)}
+                {(['ALBUM', 'EP', 'SINGLE'] as const).map(type => <option key={type} value={type}>{typeLabels[type]}</option>)}
               </select>
             </div>
             <div className="filter-field"><label className="search-label" htmlFor="release-year">Release year</label>
@@ -182,7 +169,7 @@ function EditorApp() {
                 value={filterYear} onChange={event => setFilterYear(event.target.value)} aria-invalid={!validYear}
                 aria-describedby={!validYear ? 'filter-year-error' : undefined} />
             </div>
-            <div className="filter-footer"><span>Filter these search results.</span>
+            <div className="filter-footer">
               <button className="text-button" type="button" disabled={!filterType && !filterYear}
                 onClick={() => { setFilterType(''); setFilterYear('') }}>Clear filters</button>
             </div>
@@ -191,7 +178,7 @@ function EditorApp() {
           {full && <p className="search-hint">All nine slots are filled. Select a board slot to replace a release.</p>}
           <div className="results-area" aria-busy={status === 'loading'}>
             <div className="status" role={status === 'error' || status === 'invalid' ? 'alert' : 'status'} aria-live="polite">
-              {status === 'idle' && <div className="idle-state"><span className="idle-icon"><SearchIcon /></span><h3>Every taste starts somewhere.</h3><p>Think of a favorite record. Find it here.</p></div>}
+              {status === 'idle' && <p className="idle-state">Search for an album, EP or single.</p>}
               {status === 'loading' && <p className="loading"><span className="spinner" />Searching for releases…</p>}
               {status === 'error' && <p>Search failed. Please try again.</p>}
               {status === 'invalid' && <p>Your search must be no longer than 200 characters.</p>}
@@ -199,15 +186,21 @@ function EditorApp() {
               {status === 'success' && partial && results.length > 0 && <p>{visibleResults.length > 0
                 ? 'Some sources are temporarily unavailable. Showing available results.' : 'Some sources are temporarily unavailable.'}</p>}
               {status === 'success' && validYear && results.length > 0 && visibleResults.length === 0 && <p>No releases match your filters. Try another type or year.</p>}
-              {status === 'success' && visibleResults.length > 0 && <p className="results-count">FOUND: {visibleResults.length}</p>}
+              {status === 'success' && visibleResults.length > 0 && <p className="results-count">{visibleResults.length} results</p>}
             </div>
-            {status === 'success' && visibleResults.length > 0 && <div className="results-grid">{visibleResults.map((release, index) => <ReleaseCard key={release.id}
-              release={release} index={index} added={board.releases.some(slot => slot?.id === release.id)} full={full} onAdd={() => chooseRelease(release)} />)}</div>}
+            {status === 'success' && visibleResults.length > 0 && <div className="results-grid">{visibleResults.map(release => <ReleaseCard key={release.id}
+              release={release} added={board.releases.some(slot => slot?.id === release.id)} full={full} onAdd={() => chooseRelease(release)} />)}</div>}
           </div>
         </section>
+        <BoardEditor board={board} selected={selected} onSelect={setSelected} onChange={updateBoard} onSwap={moveRelease}
+          warning={saveError ? 'Your draft could not be saved. Keep this tab open to avoid losing your changes.' : draft.warning}
+          saved={saved} announcement={announcement} canUndo={previous !== null} onUndo={undoBoard} onClear={clearBoard} onLoad={next => {
+            updateBoard(next)
+            setSelected(null)
+            setAnnouncement('Saved board loaded.')
+          }} />
       </div>
     </main>
-    <footer><span>ninefold <span className="footer-year">© 2026</span></span><p>Nine releases. One you.</p><span className="footer-note">MADE FOR MUSIC PEOPLE.</span></footer>
+    <SiteFooter />
   </div>
 }
-

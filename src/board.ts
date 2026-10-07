@@ -4,12 +4,18 @@ import { safeHttpsUrl } from './search'
 export interface TopBoard {
   version: 1
   nickname: string
+  name?: string
   theme: 'dark' | 'light'
   releases: (Release | null)[]
 }
 export const DRAFT_KEY = 'ninefold.board.v1'
 export const emptyBoard = (): TopBoard => ({ version: 1, nickname: '', theme: 'dark', releases: Array(9).fill(null) })
 export const normalizeNickname = (text: string) => Array.from(text.replace(/\p{Cc}/gu, '')).slice(0, 40).join('')
+export function boardHeading(board: TopBoard) {
+  const name = board.name?.trim()
+  const nickname = board.nickname.trim()
+  return name ? (nickname || 'someone') + "'s " + name : nickname ? nickname + "'s Top 9" : 'Top 9'
+}
 const slotExists = (index: number) => Number.isInteger(index) && index >= 0 && index < 9
 
 export function addRelease(board: TopBoard, release: Release, target: number | null = null): TopBoard {
@@ -48,12 +54,13 @@ export function parseDraft(raw: string): TopBoard {
   const value: unknown = JSON.parse(raw)
   if (!object(value) || value.version !== 1 || (value.theme !== 'dark' && value.theme !== 'light')
     || typeof value.nickname !== 'string' || value.nickname !== normalizeNickname(value.nickname)
+    || (value.name !== undefined && (typeof value.name !== 'string' || value.name !== normalizeNickname(value.name)))
     || !Array.isArray(value.releases) || value.releases.length !== 9
     || !value.releases.every(release => release === null || validRelease(release))) throw new Error('Invalid saved draft')
   const releases = value.releases as (Release | null)[]
   const ids = releases.flatMap(release => release ? [release.id] : [])
   if (new Set(ids).size !== ids.length) throw new Error('Duplicate releases in saved draft')
-  return { version: 1, nickname: value.nickname, theme: value.theme as TopBoard['theme'], releases }
+  return { version: 1, nickname: value.nickname, ...(value.name !== undefined ? { name: value.name as string } : {}), theme: value.theme as TopBoard['theme'], releases }
 }
 
 export function loadDraft(): { board: TopBoard; warning: string | null } {

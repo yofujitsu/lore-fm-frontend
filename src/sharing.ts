@@ -18,6 +18,7 @@ interface SharedReleaseV1 {
 interface SharedBoardV1 {
   v: 1
   n: string
+  b?: string
   t: TopBoard['theme']
   r: (SharedReleaseV1 | null)[]
 }
@@ -55,7 +56,7 @@ export async function encodeShare(board: TopBoard): Promise<string> {
   if (typeof CompressionStream === 'undefined') throw new ShareError('Sharing is unavailable in this browser. Try an up-to-date browser.')
   const snapshot = parseDraft(JSON.stringify(board))
   const dto: SharedBoardV1 = {
-    v: 1, n: snapshot.nickname, t: snapshot.theme,
+    v: 1, n: snapshot.nickname, ...(snapshot.name !== undefined ? { b: snapshot.name } : {}), t: snapshot.theme,
     r: snapshot.releases.map(release => release && ({
       i: release.id, t: release.title, a: release.artists.map(artist => artist.name), y: release.releaseYear, k: release.type,
       c: release.artwork ? [release.artwork.url, release.artwork.provider] : null,
@@ -82,7 +83,7 @@ export async function decodeShare(payload: string): Promise<TopBoard> {
     if (dto.v !== 1) throw new ShareError('This share link uses an unsupported version.')
     if (!Array.isArray(dto.r) || dto.r.length !== 9) throw invalid()
     const board = parseDraft(JSON.stringify({
-      version: 1, nickname: cleanText(dto.n), theme: dto.t,
+      version: 1, nickname: cleanText(dto.n), ...(dto.b !== undefined ? { name: cleanText(dto.b) } : {}), theme: dto.t,
       releases: dto.r.map(item => {
         if (item === null) return null
         if (!object(item) || !Array.isArray(item.a) || !Array.isArray(item.s)

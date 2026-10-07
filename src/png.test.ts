@@ -1,15 +1,17 @@
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest'
 import { addRelease, emptyBoard } from './board'
 import { exportPng } from './png'
 import type { Release } from './release'
 
 const release: Release = { id: 'spotify:1', title: 'Record', artists: [{ name: 'Artist' }], type: 'ALBUM', releaseYear: null,
   artwork: { url: 'https://example.com/cover.png', width: 800, height: 400, provider: 'SPOTIFY' }, sources: [] }
+beforeEach(() => { TestImage.blocked = false; vi.stubGlobal('Image', TestImage) })
+
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals() })
 
 function canvas() {
   const context = { fillStyle: '', strokeStyle: '', font: '', textAlign: '', lineWidth: 1,
-    fillRect: vi.fn(), strokeRect: vi.fn(), fillText: vi.fn(), drawImage: vi.fn(), measureText: vi.fn((_text: string) => ({ width: 100 })) }
+    save: vi.fn(), restore: vi.fn(), beginPath: vi.fn(), roundRect: vi.fn(), clip: vi.fn(), fillRect: vi.fn(), strokeRect: vi.fn(), fillText: vi.fn(), drawImage: vi.fn(), measureText: vi.fn((_text: string) => ({ width: 100 })) }
   vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(context as unknown as CanvasRenderingContext2D)
   vi.spyOn(HTMLCanvasElement.prototype, 'toBlob').mockImplementation(callback => callback(new Blob(['png'], { type: 'image/png' })))
   return context
@@ -39,8 +41,11 @@ describe('PNG export', () => {
     const result = await exportPng(board)
     expect(result.blob.type).toBe('image/png')
     expect(result.missingCovers).toBe(0)
-    expect(ctx.fillText).toHaveBeenCalledWith('night 🎵', expect.any(Number), expect.any(Number))
+    expect(ctx.fillText).toHaveBeenCalledWith("night 🎵's Top 9", expect.any(Number), expect.any(Number))
     expect(ctx.fillText).toHaveBeenCalledWith('ninefold', expect.any(Number), expect.any(Number))
+    expect(ctx.fillText).toHaveBeenCalledWith('Powered by', expect.any(Number), expect.any(Number))
+    expect(ctx.fillText.mock.calls.flat()).not.toContain('NINE RELEASES. ONE TASTE.')
+    expect(ctx.fillText.mock.calls.flat()).not.toContain('MADE FOR MUSIC PEOPLE.')
     // 2:1 artwork remains 2:1 inside its square.
     const [, , , width, height] = ctx.drawImage.mock.calls[0]
     expect(width / height).toBe(2)
@@ -103,3 +108,12 @@ describe('PNG export', () => {
   })
 })
 
+
+it('uses the board name with its nickname or an anonymous owner in the PNG', async () => {
+  const ctx = canvas()
+  const board = { ...addRelease(emptyBoard(), release), name: 'goth era', nickname: 'yofujitsu' }
+  await exportPng(board)
+  expect(ctx.fillText).toHaveBeenCalledWith("yofujitsu's goth era", expect.any(Number), expect.any(Number))
+  await exportPng({ ...board, nickname: '' })
+  expect(ctx.fillText).toHaveBeenCalledWith("someone's goth era", expect.any(Number), expect.any(Number))
+})

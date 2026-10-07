@@ -77,3 +77,12 @@ describe('Named boards', () => {
     expect(normalizeBoardName('🎵'.repeat(41))).toBe('🎵'.repeat(40))
   })
 })
+
+it('preserves an optional board name, accepts legacy drafts and rejects invalid names', () => {
+  const board = { ...emptyBoard(), name: 'my goth era 🎵' }
+  expect(parseDraft(JSON.stringify(board))).toEqual(board)
+  expect(parseDraft(JSON.stringify(emptyBoard()))).toEqual(emptyBoard())
+  for (const name of [null, 123, 'x'.repeat(41), 'bad\u0000name']) {
+    expect(() => parseDraft(JSON.stringify({ ...board, name }))).toThrow()
+  }
+})

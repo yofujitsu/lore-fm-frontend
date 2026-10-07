@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40">
+  <title>ninefold - boards 4 music nerds</title>
+  <rect width="40" height="40" rx="9" fill="#171823"/>
+  <g fill="#c1adff">
+    <rect x="5" y="5" width="8" height="8" rx="2"/>
+    <rect x="16" y="5" width="8" height="8" rx="2"/>
+    <rect x="27" y="5" width="8" height="8" rx="2" opacity=".4"/>
+    <rect x="5" y="16" width="8" height="8" rx="2"/>
+    <rect x="16" y="16" width="8" height="8" rx="2" opacity=".4"/>
+    <rect x="27" y="16" width="8" height="8" rx="2"/>
+    <rect x="5" y="27" width="8" height="8" rx="2" opacity=".4"/>
+    <rect x="16" y="27" width="8" height="8" rx="2"/>
+    <rect x="27" y="27" width="8" height="8" rx="2"/>
+  </g>
+</svg>

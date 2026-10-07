@@ -100,29 +100,18 @@ export default function BoardEditor({ board, selected, onSelect, onChange, onSwa
 
   return <section className="board-section" aria-labelledby="board-title">
     <div className="section-heading"><h2 id="board-title">Your Top 9</h2><span className="board-count">{count} / 9</span></div>
-    <p className="board-intro">A little record of you. Pick the releases that matter.</p>
-    <SavedBoards board={board} onLoad={next => { setMoveSource(null); setConfirmClear(false); onLoad(next) }} />
-    <div className="board-settings">
-      <div className="nickname-field">
-        <label className="search-label" htmlFor="nickname">Nickname (optional)</label>
-        <input id="nickname" type="text" value={board.nickname} maxLength={80} placeholder="Your name, your taste" autoComplete="off"
-          aria-describedby="nickname-hint" onChange={event => onChange({ ...board, nickname: normalizeNickname(event.target.value) })} />
-        <span id="nickname-hint" className="nickname-count">{Array.from(board.nickname).length} / 40</span>
-      </div>
-      <div className="theme-picker" role="group" aria-label="Board theme">
-        {(['dark', 'light'] as const).map(theme => <button key={theme} type="button" aria-label={theme === 'dark' ? 'Dark theme' : 'Light theme'}
-          aria-pressed={board.theme === theme} onClick={() => onChange({ ...board, theme })}>{theme === 'dark' ? '☾' : '☀'} <span>{theme === 'dark' ? 'Dark' : 'Light'}</span></button>)}
-      </div>
-    </div>
+    <div className="board-toolbar">
+      <ShareActions board={board} />
     <div className="board-tools" role="group" aria-label="Board actions">
       <button className="secondary-button" type="button" aria-label="Undo last change" disabled={!canUndo} ref={undoButton}
         onClick={() => { setMoveSource(null); setConfirmClear(false); restoreFocus.current = true; onUndo() }}><span aria-hidden="true">↶</span> Undo</button>
       <button className="secondary-button" type="button" disabled={count === 0} ref={clearButton}
         onClick={() => setConfirmClear(true)}>Clear board</button>
     </div>
+    </div>
     {confirmClear && <div className="clear-confirmation" role="group" aria-labelledby="clear-board-question">
       <p id="clear-board-question">Clear board confirmation</p>
-      <p>Clear all nine slots? Your nickname and theme will stay the same.</p>
+      <p>Clear all nine slots? Your board name, nickname and theme will stay the same.</p>
       <div className="board-tools">
         <button className="secondary-button" type="button" autoFocus aria-label="Cancel clear"
           onClick={() => { setConfirmClear(false); clearButton.current?.focus() }}>Cancel</button>
@@ -139,9 +128,8 @@ export default function BoardEditor({ board, selected, onSelect, onChange, onSwa
             if (moveSource !== null) { move(moveSource, index); setMoveSource(null) }
             else onSelect(selected === index ? null : index)
           }}>
-          <span className="slot-number">{String(index + 1).padStart(2, '0')}</span>
-          {release ? <><Artwork url={release.artwork?.url} title={release.title} /><span className="slot-caption"><strong>{release.title}</strong><span>{release.artists.map(artist => artist.name).join(', ')}</span></span></>
-            : <span className="empty-slot"><span aria-hidden="true">+</span><span>Your next favorite</span></span>}
+          {release ? <><Artwork url={release.artwork?.url} title={release.title} /><span className="slot-caption"><strong title={release.title}>{release.title}</strong><span title={release.artists.map(artist => artist.name).join(', ')}>{release.artists.map(artist => artist.name).join(', ')}</span></span></>
+            : <span className="empty-slot"><span aria-hidden="true">+</span><span>{String(index + 1).padStart(2, '0')}</span></span>}
         </button>
         <div className="slot-controls">{release ? <>
           <button type="button" className="move-handle" ref={node => { handles.current[index] = node }} aria-label={'Move ' + release.title + ' from slot ' + (index + 1)}
@@ -159,20 +147,38 @@ export default function BoardEditor({ board, selected, onSelect, onChange, onSwa
               event.currentTarget.closest('[data-board-slot]')?.querySelector<HTMLButtonElement>('.slot-select')?.focus()
               onChange(removeRelease(board, index)); setMoveSource(null)
             }}><span aria-hidden="true">×</span></button>
-        </> : <span className="empty-slot-note">Make it yours</span>}</div>
+        </> : <span className="empty-slot-note" aria-hidden="true" />}</div>
       </li>)}
     </ol>
-    <p id="move-hint" className="board-hint">Drag a Move handle to swap slots. Use arrow keys on a handle, or click Move and choose a destination.</p>
+    <p id="move-hint" className="board-hint">Drag Move to reorder. Arrow keys work too.</p>
     <div className="board-feedback" role="status" aria-live="polite">
       {moveSource !== null ? 'Choose a destination for ' + board.releases[moveSource]?.title + '.'
         : selected !== null ? 'Slot ' + (selected + 1) + ' selected. Choose a release from search.'
-        : count === 9 ? 'Your board is full. Select a slot to replace a release.' : 'Add a release from search, or select a slot to fill it.'}
+        : count === 9 ? 'Your board is full. Select a slot to replace a release.' : ''}
       {selected !== null && <button className="text-button" type="button" onClick={() => onSelect(null)}>Cancel selection</button>}
       <span className="sr-only">{announcement}</span>
     </div>
     {warning ? <p className="storage-warning" role="alert">{warning}</p>
-      : <p className="save-note"><span aria-hidden="true">{saved ? '✓' : '◌'}</span> {saved ? 'Draft saved on this browser.' : 'Your draft saves automatically on this browser.'}</p>}
-    <ShareActions board={board} />
+      : <p className="save-note"><span aria-hidden="true">{saved ? '✓' : '◌'}</span> {saved ? 'Saved in this browser.' : 'Autosaves in this browser.'}</p>}
+    <div className="board-settings">
+      <div className="nickname-field board-name-field">
+        <label className="search-label" htmlFor="board-name-input">Board name (optional)</label>
+        <input id="board-name-input" type="text" value={board.name ?? ''} maxLength={80} placeholder="my goth era" autoComplete="off"
+          aria-describedby="board-name-hint" onChange={event => onChange({ ...board, name: normalizeNickname(event.target.value) })} />
+        <span id="board-name-hint" className="nickname-count">{Array.from(board.name ?? '').length} / 40</span>
+      </div>
+      <div className="nickname-field">
+        <label className="search-label" htmlFor="nickname">Nickname (optional)</label>
+        <input id="nickname" type="text" value={board.nickname} maxLength={80} placeholder="@you" autoComplete="off"
+          aria-describedby="nickname-hint" onChange={event => onChange({ ...board, nickname: normalizeNickname(event.target.value) })} />
+        <span id="nickname-hint" className="nickname-count">{Array.from(board.nickname).length} / 40</span>
+      </div>
+      <div className="theme-picker" role="group" aria-label="Board theme">
+        {(['dark', 'light'] as const).map(theme => <button key={theme} type="button" aria-label={theme === 'dark' ? 'Dark theme' : 'Light theme'}
+          aria-pressed={board.theme === theme} onClick={() => onChange({ ...board, theme })}>{theme === 'dark' ? '☾' : '☀'} <span>{theme === 'dark' ? 'Dark' : 'Light'}</span></button>)}
+      </div>
+    </div>
+    <SavedBoards board={board} onLoad={next => { setMoveSource(null); setConfirmClear(false); onLoad(next) }} />
   </section>
 }
 

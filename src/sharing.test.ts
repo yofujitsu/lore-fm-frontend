@@ -67,3 +67,10 @@ describe('versioned shared board', () => {
   })
 })
 
+
+it('roundtrips the board name and accepts old links without it', async () => {
+  const board = { ...addRelease(emptyBoard(), release), name: 'my goth era 🎵' }
+  expect((await decodeShare(await encodeShare(board))).name).toBe(board.name)
+  expect((await decodeShare(await pack(compact))).name).toBeUndefined()
+  for (const b of [null, 123, 'x'.repeat(41)]) await expect(decodeShare(await pack({ ...compact, b }))).rejects.toThrow()
+})

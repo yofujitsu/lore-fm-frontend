@@ -1,61 +1,96 @@
-# Ninefold frontend
+# ninefold frontend
 
-React, TypeScript and Vite for music search and a visual Top 9. The Spring Boot backend is in the sibling `lore-fm` directory.
+**1.0.0** · [Try Ninefold](https://ninefold.duckdns.org/) · [Full project README](https://github.com/yofujitsu/lore-fm#readme) · [Changelog](CHANGELOG.md)
 
-Requires Node.js 22.12+.
+Pick nine releases, build a board for your current era, send it to the group chat. Albums, EPs, singles — from all-time favorites to the deep cuts you keep on repeat.
+
+This is the React app. The sibling `lore-fm` checkout contains the Spring backend, catalog credentials, Compose deployment and the full [development/deployment guide](https://github.com/yofujitsu/lore-fm#readme).
+
+## What's here
+
+- Spotify and MusicBrainz search together with source links, release-type/year filters, debounced requests and stale-response protection. Provider choice stays under the hood.
+- A big desktop Top 9 beside a search sidebar, with stacked mobile panels, rounded controls and dark lavender/cool light themes.
+- Add, replace, remove and swap covers; drag Move, use arrow keys, or select a destination. Duplicate release IDs are prevented; incomplete boards work.
+- Optional board name and nickname, each up to 40 Unicode characters. Drafts autosave locally; up to 20 named snapshots can be saved, loaded, updated, renamed or deleted.
+- One-step Undo for release, board-name and nickname edits. Theme changes preserve the current theme and history. Clear board keeps the name, nickname and theme.
+- Readonly snapshot links with clipboard fallback. Anyone with a link can open the board; there is no public discovery feed in 1.0.0.
+- Native 1440×1980 PNG export with release titles and artists beneath uncropped covers. Named headings use `nickname's board name` or `someone's board name`; unnamed boards fall back to Top 9.
+- Seven typed homepage prompts with pause/resume, a stable screen-reader heading and reduced-motion support.
+- GitHub link in the header and Spotify/MusicBrainz credits in the footer and PNG.
+
+Shared pages use the same palette and headings as exports. Covers can be unavailable or blocked by CORS; placeholders and export warnings cover those cases.
+
+## Stack
+
+React **19.3.0**, TypeScript **5.9**, Vite **8.3.2**, plain CSS, Vitest **5.0.3**, Testing Library and jsdom. State uses React hooks and browser localStorage; sharing uses Compression Streams; export uses Canvas; saved snapshots use Web Locks. The Docker runtime serves `dist/` with **Caddy 2** and proxies the Spring API on the same origin.
+
+DM Sans and Manrope are requested from Google Fonts with system-font fallbacks. Branding SVGs are bundled in `public/brand`.
+
+## Develop locally
+
+Requires **Node.js 22.12+**. Keep both repositories as siblings named `lore-fm` and `lore-fm-frontend`. Start the Java 21 backend using its [README](https://github.com/yofujitsu/lore-fm#readme), then run from this directory:
 
 ```powershell
-cd F:\java_pr\lore-fm-frontend
 npm.cmd ci
 npm.cmd run dev
 ```
 
-Open [http://127.0.0.1:5173](http://127.0.0.1:5173). The dev server proxies `/api` to `http://127.0.0.1:8080`; start the backend separately. Configure Spotify credentials and the MusicBrainz User-Agent only in the backend, following its README. MusicBrainz needs no login or API key.
+On Linux/macOS use `npm ci` and `npm run dev`. Open [127.0.0.1:5173](http://127.0.0.1:5173/). Vite proxies `/api` to `http://127.0.0.1:8080`; catalog keys belong only in the backend `.env`.
 
-To use another backend, set `$env:NINEFOLD_API_TARGET = 'http://127.0.0.1:8081'` before starting Vite. If needed, use `npm.cmd run dev -- --port 5174`.
+For another backend or occupied port:
 
-## Features
+```powershell
+$env:NINEFOLD_API_TARGET = 'http://127.0.0.1:8081'
+npm.cmd run dev -- --port 5174
+```
 
-- Combined Spotify/MusicBrainz search with a 400ms debounce, request cancellation and stale response protection.
-- Safe links to all available catalog sources; partial results remain usable during outages, with unavailable catalogs distinguished from healthy empty searches.
-- Nine fixed slots: add, remove, replace and swap releases; duplicate IDs are prevented.
-- Undo the previous release or nickname change; theme changes do not enter history, and Undo preserves the current theme. History lasts until reload.
-- Clear all slots with confirmation while preserving the nickname and theme; Undo can restore them.
-- Filter the current results by release type and exact year, with a Clear filters action. Unknown years are excluded when a year is selected; filters persist across queries without extra requests.
-- Mouse/touch dragging from Move handles and keyboard arrow movement. Click Move and choose a slot as an alternative.
-- Optional nickname of up to 40 Unicode characters and Dark/Light themes.
-- Up to 20 named local Top 9 snapshots: save, load, update, rename and delete with confirmation. Changes to a draft never silently update a saved snapshot.
-- Versioned local draft saving and restoration on reload under `ninefold.board.v1`.
-- Validated saved data, storage failure warnings, safe source links and missing artwork fallbacks.
+On Linux/macOS: `NINEFOLD_API_TARGET=http://127.0.0.1:8081 npm run dev -- --port 5174`. Ports and hostnames have separate browser drafts and saved libraries.
 
-Click **Add** to fill the first empty slot. Select a slot first to fill or replace that position. Partial boards are supported. Named snapshots use the validated, versioned `ninefold.boards.v1` library. Unreadable libraries remain stored until an explicit confirmed reset. Drafts and snapshots are local to the browser and origin; different ports have separate drafts. Sharing and PNG export are available for any nonempty board.
-
-## Sharing and PNG export
-
-Click **Share board** to create a compressed, versioned snapshot link. The app attempts to copy it; a read-only field and **Copy link** remain available when clipboard access is blocked. Board edits invalidate the previous link. Shared pages at `/top/<payload>` display metadata and artwork without searching providers, are read-only, and do not read or overwrite the viewer's own draft.
-
-The snapshot preserves all nine positions, including empty slots. Limits: 8000 encoded characters and 64 KiB of inflated UTF-8 JSON. Malformed payloads, unsupported versions and unsafe artwork/source URLs are rejected; decoded text has control characters removed.
-
-**Download PNG** exports a 1440×1980 image with Ninefold branding, the nickname, theme and uncropped artwork, with the release title and artists beneath each cover. Long captions end with an ellipsis to fit their column. Empty slots and unavailable covers use placeholders. Blocked/missing covers are reported after export. Covers load anonymously with CORS and a five-second maximum wait. PNG export also works on shared pages. Add at least one release to enable sharing/export.
-
-These features use the native [Compression Streams API](https://developer.mozilla.org/en-US/docs/Web/API/Compression_Streams_API) and [Canvas](https://developer.mozilla.org/en-US/docs/Web/HTML/How_to/CORS_enabled_image), with no additional runtime packages. Named snapshots use native Web Locks to serialize writes across tabs and require HTTPS or localhost. Use a current browser. Clipboard failure has a manual-copy fallback.
-
-A localhost link only opens on the same machine. Deployed links use the current origin. The production frontend server must serve `index.html` for `/top/*` paths as well as the homepage, while forwarding `/api` to the backend.
-
-## Checks
+## Check and build
 
 ```powershell
 npm.cmd test -- --run
 npm.cmd run build
 ```
 
-`npm ci` uses the lockfile for reproducible installation. No extra state management or drag-and-drop dependencies are required.
+The build type-checks TypeScript and writes `dist/`. Checks cover search races, partial/unavailable results, editing/history, draft validation, snapshot storage, readonly sharing, clipboard fallback, headline motion and PNG rendering. `npm ci` uses the lockfile; there are no extra state-management or drag libraries.
 
-For production, serve `dist/` and proxy `/api` through the same origin. Vite's proxy only works in the dev server; `vite preview` does not replace a reverse proxy.
+`npm.cmd run preview` previews the compiled frontend only. It does not supply the dev API proxy; use Caddy or another same-origin reverse proxy for an end-to-end production preview.
 
+## Deploy
 
-## Docker and HTTPS
+From the sibling backend checkout, with Docker Linux containers and Compose 2.30+:
 
-The sibling backend provides `compose.yaml` for both projects. From `lore-fm`, run `docker compose up -d --build --wait` and open [http://localhost:8090](http://localhost:8090). The frontend image builds and tests with Node 22, then serves the compiled app using Caddy. The same server forwards `/api` and serves `index.html` for shared `/top/*` links. Missing compiled assets return 404.
+```powershell
+docker compose up -d --build --wait
+.\scripts\smoke-deployment.ps1
+```
 
-The backend README describes VPS image transfer and `deploy.env.example` for automatic HTTPS. Catalog credentials stay in the backend runtime environment. Run its `scripts/smoke-deployment.ps1` to check the production routes and API proxy.
+Open [localhost:8090](http://localhost:8090/). The frontend Docker build runs tests and the production build; its runtime contains the compiled app, bundled brand assets and Caddy. Shared `/top/*` links resolve to `index.html`; missing compiled assets return 404; `/api` is forwarded to the backend.
+
+The [backend README](https://github.com/yofujitsu/lore-fm#docker-and-deployment) describes Ubuntu setup, image transfer for a small VPS, DNS, HTTPS, updates, rollback and logs. Live app: [ninefold.duckdns.org](https://ninefold.duckdns.org/). The old sslip.io address remains available.
+
+For a frontend-only image update on the VPS:
+
+```sh
+cd /opt/ninefold
+docker compose --env-file .env.deployment up -d --no-build --no-deps --wait frontend
+```
+
+This assumes the new image has already been loaded. The app's `1.0.0` version leaves stored board/share schemas at version 1, so existing data remains compatible.
+
+## Boards, links and browser support
+
+Drafts use `ninefold.board.v1`; the local snapshot library uses `ninefold.boards.v1`. Changes to a draft leave saved snapshots alone until Update is used. Corrupt stored libraries remain intact until an explicit reset. Older saved snapshots without a board name use their library name when loaded.
+
+Boards stay in the current browser and origin. Changing domain starts a separate library; old boards remain on the previous address. Shared links are readonly snapshots and do not import into or overwrite the viewer's draft. Editing your board requires generating a new link to share that edit.
+
+Share payloads are limited to 8000 encoded characters and 64 KiB of inflated JSON. Unsafe URLs, unsupported schemas and malformed data are rejected. PNG export waits up to five seconds for anonymous cover requests. Sharing/export needs at least one release. Use a current browser with Compression Streams, Canvas and Web Locks; snapshot writes require HTTPS or localhost.
+
+Optional SoundCloud/YouTube adapters live in the backend and are hidden from this UI. Configure them only in the backend and call them explicitly through its API.
+
+## Contributing and license
+
+Small patches and useful music-search examples are welcome. Run the checks, keep provider attribution visible and follow the [Code of Conduct](CODE_OF_CONDUCT.md).
+
+By [yofujitsu](https://github.com/yofujitsu). Project code and original documentation use [MIT](LICENSE). The Code of Conduct, brand assets, font services and catalog artwork have separate terms; see [Third-party notices](THIRD_PARTY_NOTICES.md).

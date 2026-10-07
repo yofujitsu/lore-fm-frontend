@@ -75,7 +75,7 @@ export default function SavedBoards({ board, onLoad }: { board: TopBoard; onLoad
 
   return <details className="saved-boards">
     <summary>Saved boards <span>{library.boards.length} / {MAX_SAVED_BOARDS}</span></summary>
-    <p className="board-hint">Keep named snapshots on this browser. Edits save to your draft; use Update to replace a snapshot.</p>
+    <p className="board-hint">Save a few versions. Update replaces the selected saved board.</p>
     <div className="filter-field">
       <label className="search-label" htmlFor="saved-board">Saved board</label>
       <select id="saved-board" value={selected} ref={select} disabled={library.unreadable || !library.boards.length} onChange={event => {
@@ -85,12 +85,12 @@ export default function SavedBoards({ board, onLoad }: { board: TopBoard; onLoad
     </div>
     <div className="filter-field">
       <label className="search-label" htmlFor="board-name">Board name</label>
-      <input id="board-name" value={name} ref={nameInput} maxLength={80} placeholder="Favorites, late nights…" autoComplete="off"
+      <input id="board-name" value={name} ref={nameInput} maxLength={80} placeholder="My shoegaze era…" autoComplete="off"
         onChange={event => { setName(normalizeNickname(event.target.value)); setConfirmation(null); setError(''); setMessage('') }} />
     </div>
     <div className="board-tools">
       <button className="secondary-button" type="button" disabled={library.unreadable} onClick={() => save()}>Save new board</button>
-      <button className="secondary-button" type="button" disabled={!current} onClick={() => { onLoad(current!.board); setMessage('Saved board loaded.'); setError(''); setConfirmation(null) }}>Load board</button>
+      <button className="secondary-button" type="button" disabled={!current} onClick={() => { onLoad({ ...current!.board, name: current!.board.name ?? current!.name }); setMessage('Saved board loaded.'); setError(''); setConfirmation(null) }}>Load board</button>
       <button className="secondary-button" type="button" disabled={!current} onClick={() => {
         persist(library.boards.map(entry => entry.id === selected ? { ...entry, board } : entry), 'Saved board updated.')
       }}>Update saved board</button>

@@ -1,3 +1,4 @@
+import { boardHeading } from './board'
 import type { TopBoard } from './board'
 import { safeHttpsUrl } from './search'
 
@@ -28,8 +29,9 @@ export async function exportPng(board: TopBoard): Promise<{ blob: Blob; missingC
   const ctx = canvas.getContext('2d')
   if (!ctx) throw new Error('PNG export is unavailable in this browser.')
   const palette = board.theme === 'light'
-    ? { background: '#f5f5eb', text: '#242b1d', muted: '#637153', accent: '#526e24', surface: '#eaf0dd', line: '#d1d9c2' }
-    : { background: '#111410', text: '#eeeede', muted: '#939c88', accent: '#d7f676', surface: '#1b2018', line: '#323c2c' }
+    ? { background: '#f1f1fa', text: '#242238', muted: '#646077', accent: '#6750a8', surface: '#fdfcff', line: '#d9d5e8' }
+    : { background: '#171823', text: '#f4f2ff', muted: '#b2b3cd', accent: '#c1adff', surface: '#212332', line: '#3e4059' }
+  const logos = Promise.all(['/brand/spotify.svg', '/brand/musicbrainz.svg'].map(loadCover))
   const covers = await Promise.all(board.releases.map(release => {
     const url = safeHttpsUrl(release?.artwork?.url)
     return url ? loadCover(url) : null
@@ -39,23 +41,24 @@ export async function exportPng(board: TopBoard): Promise<{ blob: Blob; missingC
   ctx.textAlign = 'left'
   ctx.fillStyle = palette.text
   ctx.font = '700 54px sans-serif'
-  ctx.fillText('ninefold', 72, 97)
+  ctx.fillText('ninefold', 125, 97)
   ctx.fillStyle = palette.accent
-  ctx.font = '600 24px sans-serif'
-  ctx.fillText('NINE RELEASES. ONE TASTE.', 72, 143)
-  if (board.nickname) {
-    let fontSize = 34
-    do { ctx.font = '400 ' + fontSize + 'px sans-serif'; fontSize -= 1 } while (ctx.measureText(board.nickname).width > 1296 && fontSize > 18)
-    ctx.fillStyle = palette.muted
-    ctx.fillText(board.nickname, 72, 203)
+  for (let row = 0; row < 3; row++) for (let column = 0; column < 3; column++) ctx.fillRect(72 + column * 14, 61 + row * 14, 11, 11)
+  ctx.fillStyle = palette.accent
+  const heading = boardHeading(board)
+  let fontSize = 42
+  ctx.font = '600 ' + fontSize + 'px sans-serif'
+  while (ctx.measureText(heading).width > 1296 && fontSize > 22) {
+    ctx.font = '600 ' + --fontSize + 'px sans-serif'
   }
-  function fitCaption(text: string) {
-    if (ctx!.measureText(text).width <= 420) return text
+  ctx.fillText(fitCaption(heading, 1296), 72, 173)
+  function fitCaption(text: string, maximum = 420) {
+    if (ctx!.measureText(text).width <= maximum) return text
     const characters = Array.from(new Intl.Segmenter().segment(text), part => part.segment)
     let low = 0, high = characters.length
     while (low < high) {
       const middle = Math.ceil((low + high) / 2)
-      if (ctx!.measureText(characters.slice(0, middle).join('') + '…').width <= 420) low = middle
+      if (ctx!.measureText(characters.slice(0, middle).join('') + '…').width <= maximum) low = middle
       else high = middle - 1
     }
     return characters.slice(0, low).join('') + '…'
@@ -66,6 +69,10 @@ export async function exportPng(board: TopBoard): Promise<{ blob: Blob; missingC
     const y = 240 + Math.floor(index / 3) * 518
     const image = covers[index]
     ctx.fillStyle = palette.surface
+    ctx.save()
+    ctx.beginPath()
+    ctx.roundRect(x, y, 420, 420, 8)
+    ctx.clip()
     ctx.fillRect(x, y, 420, 420)
     if (image) {
       const scale = Math.min(420 / image.naturalWidth, 420 / image.naturalHeight)
@@ -82,25 +89,31 @@ export async function exportPng(board: TopBoard): Promise<{ blob: Blob; missingC
       ctx.textAlign = 'center'
       ctx.fillStyle = palette.muted
       ctx.font = '400 17px sans-serif'
-      ctx.fillText(board.releases[index] ? 'NO ARTWORK' : 'AN OPEN SLOT', x + 210, y + 295)
+      ctx.fillText(board.releases[index] ? 'NO ARTWORK' : 'Empty slot', x + 210, y + 295)
       ctx.textAlign = 'left'
     }
+    ctx.restore()
     const release = board.releases[index]
     if (release) {
       ctx.fillStyle = palette.text
-      ctx.font = '600 28px sans-serif'
+      ctx.font = '600 32px sans-serif'
       ctx.fillText(fitCaption(release.title), x, y + 456)
       ctx.fillStyle = palette.muted
-      ctx.font = '400 22px sans-serif'
+      ctx.font = '400 26px sans-serif'
       ctx.fillText(fitCaption(release.artists.map(artist => artist.name).join(', ') || 'Unknown artist'), x, y + 488)
     }
   }
+  const [spotifyLogo, musicbrainzLogo] = await logos
   ctx.fillStyle = palette.muted
   ctx.font = '400 24px sans-serif'
-  ctx.fillText('A little record of you.', 72, 1878)
-  ctx.textAlign = 'right'
-  ctx.font = '600 20px sans-serif'
-  ctx.fillText('MADE FOR MUSIC PEOPLE.', 1368, 1878)
+  ctx.fillText('ninefold', 72, 1878)
+  ctx.font = '400 22px sans-serif'
+  ctx.fillText('Powered by', 460, 1878)
+  if (spotifyLogo) ctx.drawImage(spotifyLogo, 585, 1857, 26, 26)
+  ctx.fillText('Spotify', 621, 1878)
+  ctx.fillText('&', 708, 1878)
+  if (musicbrainzLogo) ctx.drawImage(musicbrainzLogo, 738, 1855, 26, 29)
+  ctx.fillText('MusicBrainz', 774, 1878)
   const blob = await new Promise<Blob>((resolve, reject) => {
     canvas.toBlob(value => value ? resolve(value) : reject(new Error('PNG export failed. Please try again.')), 'image/png')
   })

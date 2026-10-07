@@ -29,7 +29,7 @@ describe('Saved boards', () => {
     render(<SavedBoards board={emptyBoard()} onLoad={onLoad} />)
     fireEvent.change(screen.getByLabelText('Saved board'), { target: { value: firstId } })
     await click('Load board')
-    expect(onLoad).toHaveBeenLastCalledWith(populated)
+    expect(onLoad).toHaveBeenLastCalledWith({ ...populated, name: 'Favorites' })
     await click('Update saved board')
     expect(entries()[0].board).toEqual(emptyBoard())
     name('All-time favorites'); await click('Rename board')
