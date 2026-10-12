@@ -8,7 +8,7 @@ Pick your top 9 albums, EPs and singles. Make a board for your lore or current e
 
 <img width="1440" height="1980" alt="ninefold-top9" src="https://github.com/user-attachments/assets/ebbc0e2f-3aa3-4088-9bec-06dce4c148cb" />
 
-[Open Ninefold](https://ninefold.duckdns.org/) · [Backend](https://github.com/yofujitsu/lore-fm)
+[Try ninefold](https://ninefold.duckdns.org/) · [Backend repo](https://github.com/yofujitsu/lore-fm)
 
 ## Quick start
 
