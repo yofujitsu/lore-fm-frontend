@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { KeyboardEvent, PointerEvent } from 'react'
 import { normalizeNickname, removeRelease } from './board'
 import type { TopBoard } from './board'
-import { Artwork } from './Artwork'
+import BoardArtwork from './BoardArtwork'
 import ShareActions from './ShareActions'
 
 interface Props {
@@ -143,8 +143,8 @@ export default function BoardEditor({ board, selected, onSelect, onChange, onSwa
             if (moveSource !== null) { move(moveSource, index); setMoveSource(null) }
             else onSelect(selected === index ? null : index)
           }}>
-          {release ? <><Artwork url={release.artwork?.url} title={release.title} /><span className="slot-caption"><strong title={release.title}>{release.title}</strong><span title={release.artists.map(artist => artist.name).join(', ')}>{release.artists.map(artist => artist.name).join(', ')}</span></span></>
-            : <span className="empty-slot"><span aria-hidden="true">+</span><span>{String(index + 1).padStart(2, '0')}</span></span>}
+          <BoardArtwork release={release} index={index} />
+          {release && <span className="slot-caption"><strong title={release.title}>{release.title}</strong><span title={release.artists.map(artist => artist.name).join(', ')}>{release.artists.map(artist => artist.name).join(', ')}</span></span>}
         </button>
         <div className="slot-controls">{release ? <>
           <button type="button" className="move-handle" ref={node => { handles.current[index] = node }} aria-label={'Move ' + release.title + ' from slot ' + (index + 1)}
