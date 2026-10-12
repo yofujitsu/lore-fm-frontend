@@ -1,8 +1,12 @@
 # ninefold / frontend
 
-![Ninefold board editor](https://github.com/user-attachments/assets/080ac741-9ed6-4767-be86-35025284bbdb)
+<img width="2195" height="1285" alt="image" src="https://github.com/user-attachments/assets/f5b9be57-3e92-40ee-881a-f46293d212e6" />
+
+---
 
 Pick your top 9 albums, EPs and singles. Make a board for your lore or current era, then share a link or PNG.
+
+<img width="1440" height="1980" alt="ninefold-top9" src="https://github.com/user-attachments/assets/ebbc0e2f-3aa3-4088-9bec-06dce4c148cb" />
 
 [Open Ninefold](https://ninefold.duckdns.org/) · [Backend](https://github.com/yofujitsu/lore-fm)
 
