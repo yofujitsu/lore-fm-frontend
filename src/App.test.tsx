@@ -142,7 +142,7 @@ describe('release search', () => {
     expect(screen.getByRole('heading', { name: 'Unknown year' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Clear filters' })).toBeDisabled()
     expect(fetch).toHaveBeenCalledOnce()
-    expect(screen.getByRole('region', { name: 'Your Top 9' })).toHaveTextContent('0 / 9')
+    expect(screen.getByRole('region', { name: 'Your era' })).toHaveTextContent('0 / 9')
   })
 
   it('validates the year and preserves filters on a new query while retaining partial-source notices', async () => {

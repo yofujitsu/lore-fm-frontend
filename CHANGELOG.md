@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Fit the desktop release grid to the window height, move board details beside it and give Saved boards their own tab.
+- Put the icon-only theme switch and made by fj credit in the header.
+- Remove headline playback controls and bring lore, eras and music nerds into the editor copy.
+
 ## 1.0.0 — 2026-10-07
 
 First stable Ninefold release. Pick nine music releases, make a board for your mood or era, share it with friends.
@@ -10,7 +16,7 @@ First stable Ninefold release. Pick nine music releases, make a board for your m
 - Release-type and exact-year filters applied to returned results.
 - Validated compressed snapshot links, readonly shared pages and clipboard fallback.
 - Native 1440×1980 PNG export with uncropped artwork, release/artist captions, owner-and-board headings and missing-cover fallbacks.
-- Slate/lavender dark and cool light palettes, desktop/mobile layouts and typed music prompts with pause and reduced-motion support.
+- Slate/lavender dark and cool light palettes, desktop/mobile layouts and typed music prompts with reduced-motion support.
 - Developer GitHub link and Spotify/MusicBrainz attribution in the UI and export.
 - Docker Compose deployment, Caddy HTTPS, smoke checks and live DuckDNS hosting.
 - Optional SoundCloud sets/playlist and YouTube video adapters for explicit API calls; disabled until configured and hidden from normal UI searches.

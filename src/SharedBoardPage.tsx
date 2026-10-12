@@ -26,13 +26,13 @@ export default function SharedBoardPage({ payload }: { payload: string }) {
   }, [board])
 
   return <div className="page shared-page">
-    <SiteHeader />
+    <SiteHeader theme={board?.theme} onThemeChange={theme => setState(current => current.board ? { ...current, board: { ...current.board, theme } } : current)} />
     <main>
       {!board && !state.error && <p className="shared-loading" role="status">Opening this Top 9…</p>}
       {state.error && <div className="shared-error"><h1>Unable to open this Top 9</h1><p role="alert">{state.error}</p></div>}
       {board && <>
         <section className="shared-intro">
-          <p className="shared-label">Shared board</p>
+          <p className="shared-label">Shared lore</p>
           <h1>{boardHeading(board)}</h1>
 
         </section>

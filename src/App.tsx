@@ -4,6 +4,7 @@ import { safeHttpsUrl, searchReleases, trimSearchQuery } from './search'
 import { addRelease, DRAFT_KEY, loadDraft, swapSlots } from './board'
 import type { TopBoard } from './board'
 import BoardEditor from './BoardEditor'
+import SavedBoards from './SavedBoards'
 import { Artwork } from './Artwork'
 import { SiteHeader, SiteFooter, SpotifyIcon } from './SiteChrome'
 import SharedBoardPage from './SharedBoardPage'
@@ -44,6 +45,8 @@ export default function App() {
 }
 
 function EditorApp() {
+  const [activeView, setActiveView] = useState<'board' | 'saved'>('board')
+  const [loadedBoard, setLoadedBoard] = useState(0)
   const [input, setInput] = useState('')
   const [results, setResults] = useState<Release[]>([])
   const [partial, setPartial] = useState(false)
@@ -140,15 +143,27 @@ function EditorApp() {
     return () => { current = false; window.clearTimeout(timer); controller.abort() }
   }, [input])
 
-  return <div className="page">
-    <SiteHeader />
+  return <div className="page editor-page">
+    <SiteHeader theme={board.theme} onThemeChange={theme => updateBoard({ ...board, theme })}>
+      <div className="view-tabs" role="tablist" aria-label="Your boards">
+        {(['board', 'saved'] as const).map((view, index) => <button key={view} type="button" role="tab" id={view + '-tab'}
+          aria-controls={view + '-panel'} aria-selected={activeView === view} tabIndex={activeView === view ? 0 : -1}
+          onClick={() => setActiveView(view)} onKeyDown={event => {
+            if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return
+            event.preventDefault()
+            const next = event.key === 'Home' ? 0 : event.key === 'End' ? 1 : 1 - index
+            setActiveView(next === 0 ? 'board' : 'saved')
+            event.currentTarget.parentElement?.querySelectorAll<HTMLButtonElement>('[role="tab"]')[next]?.focus()
+          }}>{view === 'board' ? 'Board' : 'Saved boards'}</button>)}
+      </div>
+    </SiteHeader>
     <main>
-      <section className="hero" aria-labelledby="hero-title">
-        <AnimatedHeading />
-        <p className="intro">Albums, EPs, singles. Make a board for a mood, a genre or an era. Pass it around.</p>
-      </section>
-      <div className="workspace">
+      <div className="workspace editor-view" id="board-panel" role="tabpanel" aria-labelledby="board-tab" hidden={activeView !== 'board'}>
         <section className="search-section" aria-labelledby="search-title">
+          <div className="hero" aria-labelledby="hero-title">
+            <AnimatedHeading />
+            <p className="intro">Pick an <strong>era</strong>. Keep the <strong>lore</strong>.<br />Pass it around, <strong>music nerds</strong>.</p>
+          </div>
           <div className="section-heading"><h2 id="search-title">Find a release</h2></div>
           <label className="search-label" htmlFor="release-query">Release title or artist</label>
           <div className="search-field">
@@ -192,13 +207,19 @@ function EditorApp() {
               release={release} added={board.releases.some(slot => slot?.id === release.id)} full={full} onAdd={() => chooseRelease(release)} />)}</div>}
           </div>
         </section>
-        <BoardEditor board={board} selected={selected} onSelect={setSelected} onChange={updateBoard} onSwap={moveRelease}
+        <BoardEditor key={loadedBoard} board={board} selected={selected} onSelect={setSelected} onChange={updateBoard} onSwap={moveRelease}
           warning={saveError ? 'Your draft could not be saved. Keep this tab open to avoid losing your changes.' : draft.warning}
-          saved={saved} announcement={announcement} canUndo={previous !== null} onUndo={undoBoard} onClear={clearBoard} onLoad={next => {
-            updateBoard(next)
-            setSelected(null)
-            setAnnouncement('Saved board loaded.')
-          }} />
+          saved={saved} announcement={announcement} canUndo={previous !== null} onUndo={undoBoard} onClear={clearBoard} />
+      </div>
+      <div className="saved-view" id="saved-panel" role="tabpanel" aria-labelledby="saved-tab" hidden={activeView !== 'saved'}>
+        <SavedBoards board={board} onLoad={next => {
+          updateBoard(next)
+          setSelected(null)
+          setLoadedBoard(value => value + 1)
+          setAnnouncement('Saved board loaded.')
+          setActiveView('board')
+          document.getElementById('board-tab')?.focus()
+        }} />
       </div>
     </main>
     <SiteFooter />

@@ -73,9 +73,9 @@ export default function SavedBoards({ board, onLoad }: { board: TopBoard; onLoad
     setConfirmation(null)
   }
 
-  return <details className="saved-boards">
-    <summary>Saved boards <span>{library.boards.length} / {MAX_SAVED_BOARDS}</span></summary>
-    <p className="board-hint">Save a few versions. Update replaces the selected saved board.</p>
+  return <section className="saved-boards" aria-labelledby="saved-title">
+    <div className="section-heading"><h1 id="saved-title">Saved eras</h1><span className="board-count">{library.boards.length} / {MAX_SAVED_BOARDS}</span></div>
+    <p className="board-hint">Your lore, on file. Saved in this browser. Update replaces the selected board.</p>
     <div className="filter-field">
       <label className="search-label" htmlFor="saved-board">Saved board</label>
       <select id="saved-board" value={selected} ref={select} disabled={library.unreadable || !library.boards.length} onChange={event => {
@@ -110,5 +110,5 @@ export default function SavedBoards({ board, onLoad }: { board: TopBoard; onLoad
     </div>}
     {error && <p className="storage-warning" role="alert">{error}</p>}
     {message && <p className="action-message" role="status">{message}</p>}
-  </details>
+  </section>
 }

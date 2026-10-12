@@ -4,7 +4,6 @@ import { normalizeNickname, removeRelease } from './board'
 import type { TopBoard } from './board'
 import { Artwork } from './Artwork'
 import ShareActions from './ShareActions'
-import SavedBoards from './SavedBoards'
 
 interface Props {
   board: TopBoard
@@ -18,10 +17,9 @@ interface Props {
   canUndo: boolean
   onUndo: () => void
   onClear: () => void
-  onLoad: (board: TopBoard) => void
 }
 
-export default function BoardEditor({ board, selected, onSelect, onChange, onSwap, warning, saved, announcement, canUndo, onUndo, onClear, onLoad }: Props) {
+export default function BoardEditor({ board, selected, onSelect, onChange, onSwap, warning, saved, announcement, canUndo, onUndo, onClear }: Props) {
   const [confirmClear, setConfirmClear] = useState(false)
   const clearButton = useRef<HTMLButtonElement | null>(null)
   const undoButton = useRef<HTMLButtonElement | null>(null)
@@ -99,7 +97,23 @@ export default function BoardEditor({ board, selected, onSelect, onChange, onSwa
   }
 
   return <section className="board-section" aria-labelledby="board-title">
-    <div className="section-heading"><h2 id="board-title">Your Top 9</h2><span className="board-count">{count} / 9</span></div>
+    <div className="section-heading">
+      <h2 id="board-title" className="sr-only">Your era</h2>
+      <div className="board-identity" role="group" aria-label="Board heading">
+        <label className="sr-only" htmlFor="nickname">Nickname (optional)</label>
+        <input id="nickname" type="text" value={board.nickname} maxLength={80} placeholder="someone" autoComplete="off"
+          size={Math.max(7, Array.from(board.nickname).length)} aria-describedby="nickname-hint"
+          onChange={event => onChange({ ...board, nickname: normalizeNickname(event.target.value) })} />
+        <span aria-hidden="true">’s</span>
+        <label className="sr-only" htmlFor="board-name-input">Board name (optional)</label>
+        <input id="board-name-input" type="text" value={board.name ?? ''} maxLength={80} placeholder="Top 9" autoComplete="off"
+          size={Math.max(5, Array.from(board.name ?? '').length)} aria-describedby="board-name-hint"
+          onChange={event => onChange({ ...board, name: normalizeNickname(event.target.value) })} />
+        <span id="nickname-hint" className="sr-only">Up to 40 characters.</span>
+        <span id="board-name-hint" className="sr-only">Up to 40 characters.</span>
+      </div>
+      <span className="board-count">{count} / 9</span>
+    </div>
     <div className="board-toolbar">
       <ShareActions board={board} />
     <div className="board-tools" role="group" aria-label="Board actions">
@@ -120,6 +134,7 @@ export default function BoardEditor({ board, selected, onSelect, onChange, onSwa
         }}>Clear slots</button>
       </div>
     </div>}
+    <div className="board-canvas">
     <ol className="top-grid" aria-label="Nine release slots">
       {board.releases.map((release, index) => <li key={index} data-board-slot={index}
         className={'board-slot' + (selected === index ? ' is-selected' : '') + (dragging === index ? ' is-dragging' : '') + (dragging !== null && dropTarget === index ? ' is-drop-target' : '')}>
@@ -141,7 +156,7 @@ export default function BoardEditor({ board, selected, onSelect, onChange, onSwa
               if (suppressClick.current && event.detail > 0) { suppressClick.current = false; return }
               suppressClick.current = false
               setMoveSource(moveSource === index ? null : index)
-            }}><span aria-hidden="true">↕</span> Move</button>
+            }}><span aria-hidden="true">↕</span><span className="control-label"> Move</span></button>
           <button type="button" className="remove-button" aria-label={'Remove ' + release.title + ' from slot ' + (index + 1)}
             onClick={event => {
               event.currentTarget.closest('[data-board-slot]')?.querySelector<HTMLButtonElement>('.slot-select')?.focus()
@@ -150,6 +165,8 @@ export default function BoardEditor({ board, selected, onSelect, onChange, onSwa
         </> : <span className="empty-slot-note" aria-hidden="true" />}</div>
       </li>)}
     </ol>
+    </div>
+    <div className="board-notes">
     <p id="move-hint" className="board-hint">Drag Move to reorder. Arrow keys work too.</p>
     <div className="board-feedback" role="status" aria-live="polite">
       {moveSource !== null ? 'Choose a destination for ' + board.releases[moveSource]?.title + '.'
@@ -160,25 +177,7 @@ export default function BoardEditor({ board, selected, onSelect, onChange, onSwa
     </div>
     {warning ? <p className="storage-warning" role="alert">{warning}</p>
       : <p className="save-note"><span aria-hidden="true">{saved ? '✓' : '◌'}</span> {saved ? 'Saved in this browser.' : 'Autosaves in this browser.'}</p>}
-    <div className="board-settings">
-      <div className="nickname-field board-name-field">
-        <label className="search-label" htmlFor="board-name-input">Board name (optional)</label>
-        <input id="board-name-input" type="text" value={board.name ?? ''} maxLength={80} placeholder="my goth era" autoComplete="off"
-          aria-describedby="board-name-hint" onChange={event => onChange({ ...board, name: normalizeNickname(event.target.value) })} />
-        <span id="board-name-hint" className="nickname-count">{Array.from(board.name ?? '').length} / 40</span>
-      </div>
-      <div className="nickname-field">
-        <label className="search-label" htmlFor="nickname">Nickname (optional)</label>
-        <input id="nickname" type="text" value={board.nickname} maxLength={80} placeholder="@you" autoComplete="off"
-          aria-describedby="nickname-hint" onChange={event => onChange({ ...board, nickname: normalizeNickname(event.target.value) })} />
-        <span id="nickname-hint" className="nickname-count">{Array.from(board.nickname).length} / 40</span>
-      </div>
-      <div className="theme-picker" role="group" aria-label="Board theme">
-        {(['dark', 'light'] as const).map(theme => <button key={theme} type="button" aria-label={theme === 'dark' ? 'Dark theme' : 'Light theme'}
-          aria-pressed={board.theme === theme} onClick={() => onChange({ ...board, theme })}>{theme === 'dark' ? '☾' : '☀'} <span>{theme === 'dark' ? 'Dark' : 'Light'}</span></button>)}
-      </div>
     </div>
-    <SavedBoards board={board} onLoad={next => { setMoveSource(null); setConfirmClear(false); onLoad(next) }} />
   </section>
 }
 

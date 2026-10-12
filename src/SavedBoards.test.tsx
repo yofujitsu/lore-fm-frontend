@@ -73,7 +73,6 @@ describe('Saved boards', () => {
     const first = render(<SavedBoards board={populated} onLoad={vi.fn()} />)
     const second = render(<SavedBoards board={emptyBoard()} onLoad={vi.fn()} />)
     for (const [view, title] of [[first, 'First tab'], [second, 'Second tab']] as const) {
-      fireEvent.click(view.container.querySelector('summary')!)
       fireEvent.change(view.container.querySelector('input')!, { target: { value: title } })
       fireEvent.click(within(view.container).getByRole('button', { name: 'Save new board' }))
     }
